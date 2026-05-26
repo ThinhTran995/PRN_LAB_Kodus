@@ -12,7 +12,7 @@ namespace PRN232.LMS.API.Controllers;
 
 /// <summary>Manage Subjects</summary>
 [ApiController]
-[Route("api/subjects")]  // lowercase route – RESTful URI naming convention
+[Route("api/subjects")]
 [Produces("application/json")]
 public class SubjectsController : ControllerBase
 {
@@ -27,11 +27,16 @@ public class SubjectsController : ControllerBase
 
     /// <summary>Get all subjects with search, sort and paging</summary>
     [HttpGet]
-    [ProducesResponseType(typeof(ApiResponse<PagedResult<object>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<PagedResult<SubjectResponse>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll([FromQuery] SubjectQueryParams query)
     {
         var result = await _service.GetAllAsync(query);
-        return Ok(ApiResponse<PagedResult<object>>.Ok(result));
+        var pagedResponse = new PagedResult<SubjectResponse>
+        {
+            Items = result.Items.Select(i => _mapper.Map<SubjectResponse>(i)),
+            Pagination = result.Pagination
+        };
+        return Ok(ApiResponse<PagedResult<SubjectResponse>>.Ok(pagedResponse));
     }
 
     /// <summary>Get subject by ID</summary>
@@ -52,41 +57,85 @@ public class SubjectsController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<SubjectResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([FromBody] CreateSubjectRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ApiResponse<object>.Fail("Invalid request", ModelState));
     
-        var bm       = _mapper.Map<SubjectBM>(request);
-        var created  = await _service.CreateAsync(bm);
-        var response = _mapper.Map<SubjectResponse>(created);
-        return CreatedAtAction(nameof(GetById), new { id = response.SubjectId },
-            ApiResponse<SubjectResponse>.Ok(response, "Subject created successfully"));
+        try
+        {
+            var bm       = _mapper.Map<SubjectBM>(request);
+            var created  = await _service.CreateAsync(bm);
+            var response = _mapper.Map<SubjectResponse>(created);
+            return CreatedAtAction(nameof(GetById), new { id = response.SubjectId },
+                ApiResponse<SubjectResponse>.Ok(response, "Subject created successfully"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<object>.Fail(ex.Message));
+        }
     }
 
     /// <summary>Update an existing subject</summary>
     [HttpPut("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<SubjectResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateSubjectRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ApiResponse<object>.Fail("Invalid request", ModelState));
     
-        var bm      = _mapper.Map<SubjectBM>(request);
-        var updated = await _service.UpdateAsync(id, bm);
-        if (updated == null) return NotFound(ApiResponse<object>.Fail("Subject not found"));
-        return Ok(ApiResponse<SubjectResponse>.Ok(_mapper.Map<SubjectResponse>(updated)));
+        try
+        {
+            var bm      = _mapper.Map<SubjectBM>(request);
+            var updated = await _service.UpdateAsync(id, bm);
+            if (updated == null) return NotFound(ApiResponse<object>.Fail("Subject not found"));
+            return Ok(ApiResponse<SubjectResponse>.Ok(_mapper.Map<SubjectResponse>(updated)));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
+    /// <summary>Partially update a subject</summary>
+    [HttpPatch("{id:int}")]
+    [ProducesResponseType(typeof(ApiResponse<SubjectResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Patch(int id, [FromBody] PatchSubjectRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ApiResponse<object>.Fail("Invalid request", ModelState));
+
+        try
+        {
+            var existing = await _service.GetByIdAsync(id);
+            if (existing == null) return NotFound(ApiResponse<object>.Fail("Subject not found"));
+
+            if (request.SubjectCode != null) existing.SubjectCode = request.SubjectCode;
+            if (request.SubjectName != null) existing.SubjectName = request.SubjectName;
+            if (request.Credit.HasValue) existing.Credit = request.Credit.Value;
+
+            var updated = await _service.UpdateAsync(id, existing);
+            return Ok(ApiResponse<SubjectResponse>.Ok(_mapper.Map<SubjectResponse>(updated!)));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<object>.Fail(ex.Message));
+        }
     }
 
     /// <summary>Delete a subject</summary>
     [HttpDelete("{id:int}")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(int id)
     {
         var deleted = await _service.DeleteAsync(id);
         if (!deleted) return NotFound(ApiResponse<object>.Fail("Subject not found"));
-        return Ok(ApiResponse<object>.Ok(null!, "Subject deleted successfully"));
+        return NoContent();
     }
 }

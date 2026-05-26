@@ -12,7 +12,7 @@ namespace PRN232.LMS.API.Controllers;
 
 /// <summary>Manage Enrollments</summary>
 [ApiController]
-[Route("api/enrollments")]  // lowercase route – RESTful URI naming convention
+[Route("api/enrollments")]
 [Produces("application/json")]
 public class EnrollmentsController : ControllerBase
 {
@@ -27,11 +27,16 @@ public class EnrollmentsController : ControllerBase
 
     /// <summary>Get all enrollments with search, sort, paging, field selection and expand (student, course)</summary>
     [HttpGet]
-    [ProducesResponseType(typeof(ApiResponse<PagedResult<object>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<PagedResult<EnrollmentResponse>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll([FromQuery] EnrollmentQueryParams query)
     {
         var result = await _service.GetAllAsync(query);
-        return Ok(ApiResponse<PagedResult<object>>.Ok(result));
+        var pagedResponse = new PagedResult<EnrollmentResponse>
+        {
+            Items = result.Items.Select(i => _mapper.Map<EnrollmentResponse>(i)),
+            Pagination = result.Pagination
+        };
+        return Ok(ApiResponse<PagedResult<EnrollmentResponse>>.Ok(pagedResponse));
     }
 
     /// <summary>Get enrollment by ID</summary>
@@ -52,41 +57,86 @@ public class EnrollmentsController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<EnrollmentResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([FromBody] CreateEnrollmentRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ApiResponse<object>.Fail("Invalid request", ModelState));
     
-        var bm       = _mapper.Map<EnrollmentBM>(request);
-        var created  = await _service.CreateAsync(bm);
-        var response = _mapper.Map<EnrollmentResponse>(created);
-        return CreatedAtAction(nameof(GetById), new { id = response.EnrollmentId },
-            ApiResponse<EnrollmentResponse>.Ok(response, "Enrollment created successfully"));
+        try
+        {
+            var bm       = _mapper.Map<EnrollmentBM>(request);
+            var created  = await _service.CreateAsync(bm);
+            var response = _mapper.Map<EnrollmentResponse>(created);
+            return CreatedAtAction(nameof(GetById), new { id = response.EnrollmentId },
+                ApiResponse<EnrollmentResponse>.Ok(response, "Enrollment created successfully"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<object>.Fail(ex.Message));
+        }
     }
 
     /// <summary>Update an existing enrollment</summary>
     [HttpPut("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<EnrollmentResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateEnrollmentRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ApiResponse<object>.Fail("Invalid request", ModelState));
     
-        var bm      = _mapper.Map<EnrollmentBM>(request);
-        var updated = await _service.UpdateAsync(id, bm);
-        if (updated == null) return NotFound(ApiResponse<object>.Fail("Enrollment not found"));
-        return Ok(ApiResponse<EnrollmentResponse>.Ok(_mapper.Map<EnrollmentResponse>(updated)));
+        try
+        {
+            var bm      = _mapper.Map<EnrollmentBM>(request);
+            var updated = await _service.UpdateAsync(id, bm);
+            if (updated == null) return NotFound(ApiResponse<object>.Fail("Enrollment not found"));
+            return Ok(ApiResponse<EnrollmentResponse>.Ok(_mapper.Map<EnrollmentResponse>(updated)));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
+    /// <summary>Partially update an enrollment</summary>
+    [HttpPatch("{id:int}")]
+    [ProducesResponseType(typeof(ApiResponse<EnrollmentResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Patch(int id, [FromBody] PatchEnrollmentRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ApiResponse<object>.Fail("Invalid request", ModelState));
+
+        try
+        {
+            var existing = await _service.GetByIdAsync(id);
+            if (existing == null) return NotFound(ApiResponse<object>.Fail("Enrollment not found"));
+
+            if (request.StudentId.HasValue) existing.StudentId = request.StudentId.Value;
+            if (request.CourseId.HasValue) existing.CourseId = request.CourseId.Value;
+            if (request.EnrollDate.HasValue) existing.EnrollDate = request.EnrollDate.Value;
+            if (request.Status != null) existing.Status = request.Status;
+
+            var updated = await _service.UpdateAsync(id, existing);
+            return Ok(ApiResponse<EnrollmentResponse>.Ok(_mapper.Map<EnrollmentResponse>(updated!)));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<object>.Fail(ex.Message));
+        }
     }
 
     /// <summary>Delete an enrollment</summary>
     [HttpDelete("{id:int}")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(int id)
     {
         var deleted = await _service.DeleteAsync(id);
         if (!deleted) return NotFound(ApiResponse<object>.Fail("Enrollment not found"));
-        return Ok(ApiResponse<object>.Ok(null!, "Enrollment deleted successfully"));
+        return NoContent();
     }
 }

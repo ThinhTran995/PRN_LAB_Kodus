@@ -19,12 +19,22 @@ public class CourseRepository : ICourseRepository
     public async Task<Course?> GetByIdAsync(int id)
         => await _context.Courses
             .Include(c => c.Semester)
-            .Include(c => c.Enrollments)
-                .ThenInclude(e => e.Student)
             .FirstOrDefaultAsync(c => c.CourseId == id);
+
+    public async Task<List<Enrollment>> GetEnrollmentsByCourseIdAsync(int courseId)
+        => await _context.Enrollments
+            .AsNoTracking()
+            .Include(e => e.Student)
+            .Include(e => e.Course)
+            .Where(e => e.CourseId == courseId)
+            .ToListAsync();
 
     public async Task<Course> CreateAsync(Course course)
     {
+        var nameExists = await _context.Courses.AnyAsync(c => c.CourseName == course.CourseName);
+        if (nameExists)
+            throw new InvalidOperationException($"Course name '{course.CourseName}' already exists.");
+
         _context.Courses.Add(course);
         await _context.SaveChangesAsync();
         return course;
@@ -34,6 +44,11 @@ public class CourseRepository : ICourseRepository
     {
         var existing = await _context.Courses.FindAsync(course.CourseId);
         if (existing == null) return null;
+
+        var nameExists = await _context.Courses.AnyAsync(c => c.CourseId != course.CourseId && c.CourseName == course.CourseName);
+        if (nameExists)
+            throw new InvalidOperationException($"Course name '{course.CourseName}' already exists.");
+
         existing.CourseName = course.CourseName;
         existing.SemesterId = course.SemesterId;
         await _context.SaveChangesAsync();

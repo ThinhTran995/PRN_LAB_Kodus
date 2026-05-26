@@ -6,6 +6,4 @@ public class SemesterResponse
     public string SemesterName { get; set; } = null!;
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
-
-    public ICollection<CourseResponse>? Courses { get; set; }
 }

@@ -1,4 +1,5 @@
 namespace PRN232.LMS.API.Models.Responses;
+using System.Collections.Generic;
 
 public class CourseResponse
 {
@@ -6,4 +7,5 @@ public class CourseResponse
     public string CourseName { get; set; } = null!;
     public int SemesterId { get; set; }
     public SemesterResponse? Semester { get; set; }
+    public List<EnrollmentResponse>? Enrollments { get; set; }
 }

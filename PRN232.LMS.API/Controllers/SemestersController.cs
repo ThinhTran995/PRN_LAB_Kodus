@@ -12,7 +12,7 @@ namespace PRN232.LMS.API.Controllers;
 
 /// <summary>Manage Semesters</summary>
 [ApiController]
-[Route("api/semesters")]  // lowercase route – RESTful URI naming convention
+[Route("api/semesters")]
 [Produces("application/json")]
 public class SemestersController : ControllerBase
 {
@@ -27,11 +27,16 @@ public class SemestersController : ControllerBase
 
     /// <summary>Get all semesters with search, sort and paging</summary>
     [HttpGet]
-    [ProducesResponseType(typeof(ApiResponse<PagedResult<object>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<PagedResult<SemesterResponse>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll([FromQuery] SemesterQueryParams query)
     {
         var result = await _service.GetAllAsync(query);
-        return Ok(ApiResponse<PagedResult<object>>.Ok(result));
+        var pagedResponse = new PagedResult<SemesterResponse>
+        {
+            Items = result.Items.Select(i => _mapper.Map<SemesterResponse>(i)),
+            Pagination = result.Pagination
+        };
+        return Ok(ApiResponse<PagedResult<SemesterResponse>>.Ok(pagedResponse));
     }
 
     /// <summary>Get semester by ID</summary>
@@ -43,6 +48,20 @@ public class SemestersController : ControllerBase
         var bm = await _service.GetByIdAsync(id);
         if (bm == null) return NotFound(ApiResponse<object>.Fail("Semester not found"));
         return Ok(ApiResponse<SemesterResponse>.Ok(_mapper.Map<SemesterResponse>(bm)));
+    }
+
+    /// <summary>Get all courses under a specific semester</summary>
+    [HttpGet("{id:int}/courses")]
+    [ProducesResponseType(typeof(ApiResponse<List<CourseResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetCoursesBySemesterId(int id)
+    {
+        var semester = await _service.GetByIdAsync(id);
+        if (semester == null) return NotFound(ApiResponse<object>.Fail("Semester not found"));
+
+        var courses = await _service.GetCoursesBySemesterIdAsync(id);
+        var result = courses.Select(c => _mapper.Map<CourseResponse>(_mapper.Map<CourseBM>(c))).ToList();
+        return Ok(ApiResponse<List<CourseResponse>>.Ok(result));
     }
 
     // ── Dưới đây là các endpoint NGOÀI YÊU CẦU LAB1 (LAB chỉ yêu cầu GET) ──────

@@ -18,13 +18,23 @@ public class StudentRepository : IStudentRepository
 
     public async Task<Student?> GetByIdAsync(int id)
         => await _context.Students
-            .Include(s => s.Enrollments)
-                .ThenInclude(e => e.Course)
-                    .ThenInclude(c => c.Semester)
             .FirstOrDefaultAsync(s => s.StudentId == id);
+
+    public async Task<List<Enrollment>> GetEnrollmentsByStudentIdAsync(int studentId)
+        => await _context.Enrollments
+            .AsNoTracking()
+            .Include(e => e.Course)
+                .ThenInclude(c => c.Semester)
+            .Include(e => e.Student)
+            .Where(e => e.StudentId == studentId)
+            .ToListAsync();
 
     public async Task<Student> CreateAsync(Student student)
     {
+        var emailExists = await _context.Students.AnyAsync(s => s.Email == student.Email);
+        if (emailExists)
+            throw new InvalidOperationException($"Student email '{student.Email}' already exists.");
+
         _context.Students.Add(student);
         await _context.SaveChangesAsync();
         return student;
@@ -34,8 +44,13 @@ public class StudentRepository : IStudentRepository
     {
         var existing = await _context.Students.FindAsync(student.StudentId);
         if (existing == null) return null;
-        existing.FullName    = student.FullName;
-        existing.Email       = student.Email;
+
+        var emailExists = await _context.Students.AnyAsync(s => s.StudentId != student.StudentId && s.Email == student.Email);
+        if (emailExists)
+            throw new InvalidOperationException($"Student email '{student.Email}' already exists.");
+
+        existing.FullName = student.FullName;
+        existing.Email = student.Email;
         existing.DateOfBirth = student.DateOfBirth;
         await _context.SaveChangesAsync();
         return existing;

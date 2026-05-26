@@ -57,7 +57,7 @@ public class EnrollmentService : IEnrollmentService
 
     public async Task<EnrollmentBM> CreateAsync(EnrollmentBM bm)
     {
-        var entity  = _mapper.Map<Enrollment>(bm);
+        var entity = _mapper.Map<Enrollment>(bm);
         var created = await _repo.CreateAsync(entity);
         return _mapper.Map<EnrollmentBM>(created);
     }
@@ -65,8 +65,8 @@ public class EnrollmentService : IEnrollmentService
     public async Task<EnrollmentBM?> UpdateAsync(int id, EnrollmentBM bm)
     {
         bm.EnrollmentId = id;
-        var entity      = _mapper.Map<Enrollment>(bm);
-        var updated     = await _repo.UpdateAsync(entity);
+        var entity = _mapper.Map<Enrollment>(bm);
+        var updated = await _repo.UpdateAsync(entity);
         return updated == null ? null : _mapper.Map<EnrollmentBM>(updated);
     }
 

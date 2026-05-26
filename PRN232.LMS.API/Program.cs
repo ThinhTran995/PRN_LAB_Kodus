@@ -6,42 +6,37 @@ using PRN232.LMS.Repositories.Interfaces;
 using PRN232.LMS.Services.Implementations;
 using PRN232.LMS.Services.Interfaces;
 
-// Allow Npgsql to accept DateTime.Kind=Unspecified (required for seed data)
+using System.Text.Json.Serialization;
+
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ─── DbContext ───────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<LmsDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// ─── Repositories ────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IStudentRepository,    StudentRepository>();
 builder.Services.AddScoped<ICourseRepository,     CourseRepository>();
 builder.Services.AddScoped<ISemesterRepository,   SemesterRepository>();
 builder.Services.AddScoped<ISubjectRepository,    SubjectRepository>();
 builder.Services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
 
-// ─── Services ────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IStudentService,    StudentService>();
 builder.Services.AddScoped<ICourseService,     CourseService>();
 builder.Services.AddScoped<ISemesterService,   SemesterService>();
 builder.Services.AddScoped<ISubjectService,    SubjectService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
-// ─── AutoMapper (scans all assemblies) ───────────────────────────────────────
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-// ─── Controllers + JSON ──────────────────────────────────────────────────────
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>
     {
         opts.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-        opts.JsonSerializerOptions.DefaultIgnoreCondition =
-            System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+        opts.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+        opts.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
 
-// ─── Swagger / OpenAPI ───────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -51,7 +46,6 @@ builder.Services.AddSwaggerGen(c =>
         Version     = "v1",
         Description = "Learning Management System RESTful API – PRN232 LAB 1"
     });
-    // Include XML comments
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     if (File.Exists(xmlPath)) c.IncludeXmlComments(xmlPath);
@@ -59,7 +53,6 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// ─── Auto-migrate với retry (chờ PostgreSQL sẵn sàng trong Docker) ───────────
 using (var scope = app.Services.CreateScope())
 {
     var db     = scope.ServiceProvider.GetRequiredService<LmsDbContext>();
@@ -83,16 +76,13 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// ─── Pipeline ────────────────────────────────────────────────────────────────
-// Swagger luôn bật (Development + Docker Production đều dùng được)
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "LMS API V1");
-    c.RoutePrefix = string.Empty; // Swagger tại "/"
+    c.RoutePrefix = string.Empty;
 });
 
-// app.UseHttpsRedirection(); // Tắt: Docker chạy HTTP-only (port 80)
 app.UseAuthorization();
 app.MapControllers();
 

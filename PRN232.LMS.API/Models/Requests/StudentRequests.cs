@@ -13,3 +13,10 @@ public class UpdateStudentRequest
     public string Email { get; set; } = null!;
     public DateTime DateOfBirth { get; set; }
 }
+
+public class PatchStudentRequest
+{
+    public string? FullName { get; set; }
+    public string? Email { get; set; }
+    public DateTime? DateOfBirth { get; set; }
+}

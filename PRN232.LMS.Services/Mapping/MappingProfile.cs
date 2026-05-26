@@ -13,8 +13,7 @@ public class MappingProfile : Profile
             .ForMember(d => d.Enrollments, o => o.MapFrom(s => s.Enrollments));
         CreateMap<Course,     CourseBM>()
             .ForMember(d => d.Semester, o => o.MapFrom(s => s.Semester));
-        CreateMap<Semester,   SemesterBM>()
-            .ForMember(d => d.Courses, o => o.MapFrom(s => s.Courses));
+        CreateMap<Semester,   SemesterBM>();
         CreateMap<Subject,    SubjectBM>();
         CreateMap<Enrollment, EnrollmentBM>()
             .ForMember(d => d.Student, o => o.MapFrom(s => s.Student))

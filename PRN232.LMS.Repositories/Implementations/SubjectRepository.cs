@@ -21,6 +21,10 @@ public class SubjectRepository : ISubjectRepository
 
     public async Task<Subject> CreateAsync(Subject subject)
     {
+        var codeExists = await _context.Subjects.AnyAsync(s => s.SubjectCode == subject.SubjectCode);
+        if (codeExists)
+            throw new InvalidOperationException($"Subject code '{subject.SubjectCode}' already exists.");
+
         _context.Subjects.Add(subject);
         await _context.SaveChangesAsync();
         return subject;
@@ -30,9 +34,14 @@ public class SubjectRepository : ISubjectRepository
     {
         var existing = await _context.Subjects.FindAsync(subject.SubjectId);
         if (existing == null) return null;
+
+        var codeExists = await _context.Subjects.AnyAsync(s => s.SubjectId != subject.SubjectId && s.SubjectCode == subject.SubjectCode);
+        if (codeExists)
+            throw new InvalidOperationException($"Subject code '{subject.SubjectCode}' already exists.");
+
         existing.SubjectCode = subject.SubjectCode;
         existing.SubjectName = subject.SubjectName;
-        existing.Credit      = subject.Credit;
+        existing.Credit = subject.Credit;
         await _context.SaveChangesAsync();
         return existing;
     }

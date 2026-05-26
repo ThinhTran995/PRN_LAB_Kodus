@@ -18,8 +18,13 @@ public class SemesterRepository : ISemesterRepository
 
     public async Task<Semester?> GetByIdAsync(int id)
         => await _context.Semesters
-            .Include(s => s.Courses)
             .FirstOrDefaultAsync(s => s.SemesterId == id);
+
+    public async Task<List<Course>> GetCoursesBySemesterIdAsync(int semesterId)
+        => await _context.Courses
+            .AsNoTracking()
+            .Where(c => c.SemesterId == semesterId)
+            .ToListAsync();
 
     public async Task<Semester> CreateAsync(Semester semester)
     {

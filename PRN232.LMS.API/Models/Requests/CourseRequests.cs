@@ -11,3 +11,9 @@ public class UpdateCourseRequest
     public string CourseName { get; set; } = null!;
     public int SemesterId { get; set; }
 }
+
+public class PatchCourseRequest
+{
+    public string? CourseName { get; set; }
+    public int? SemesterId { get; set; }
+}

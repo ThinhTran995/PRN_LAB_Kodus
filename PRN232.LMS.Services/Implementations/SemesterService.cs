@@ -27,6 +27,12 @@ public class SemesterService : ISemesterService
         return entity == null ? null : _mapper.Map<SemesterBM>(entity);
     }
 
+    public async Task<List<CourseBM>> GetCoursesBySemesterIdAsync(int semesterId)
+    {
+        var courses = await _repo.GetCoursesBySemesterIdAsync(semesterId);
+        return _mapper.Map<List<CourseBM>>(courses);
+    }
+
     public async Task<PagedResult<object>> GetAllAsync(SemesterQueryParams query)
     {
         var source = await _repo.GetQueryableAsync();

@@ -6,6 +6,7 @@ public interface ISemesterRepository
 {
     Task<Semester?> GetByIdAsync(int id);
     Task<IQueryable<Semester>> GetQueryableAsync();
+    Task<List<Course>> GetCoursesBySemesterIdAsync(int semesterId);
     Task<Semester> CreateAsync(Semester semester);
     Task<Semester?> UpdateAsync(Semester semester);
     Task<bool> DeleteAsync(int id);

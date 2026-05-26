@@ -47,10 +47,12 @@ public class ApiMappingProfile : Profile
         CreateMap<StudentBM,    StudentResponse>();
         CreateMap<CourseBM,     CourseResponse>()
             .ForMember(d => d.Semester, o => o.MapFrom(s => s.Semester));
-        CreateMap<SemesterBM,   SemesterResponse>()
-            .ForMember(d => d.Courses, o => o.MapFrom(s => s.Courses));
+        CreateMap<SemesterBM,   SemesterResponse>();
         CreateMap<SubjectBM,    SubjectResponse>();
         CreateMap<EnrollmentBM, EnrollmentResponse>()
+            .ForMember(d => d.Student, o => o.MapFrom(s => s.Student))
+            .ForMember(d => d.Course,  o => o.MapFrom(s => s.Course));
+        CreateMap<EnrollmentBM, EnrollmentItemResponse>()
             .ForMember(d => d.Student, o => o.MapFrom(s => s.Student))
             .ForMember(d => d.Course,  o => o.MapFrom(s => s.Course));
     }

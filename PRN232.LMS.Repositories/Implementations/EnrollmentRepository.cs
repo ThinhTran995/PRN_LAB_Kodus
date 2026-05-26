@@ -25,6 +25,10 @@ public class EnrollmentRepository : IEnrollmentRepository
 
     public async Task<Enrollment> CreateAsync(Enrollment enrollment)
     {
+        var duplicate = await _context.Enrollments.AnyAsync(e => e.StudentId == enrollment.StudentId && e.CourseId == enrollment.CourseId);
+        if (duplicate)
+            throw new InvalidOperationException($"Student {enrollment.StudentId} is already enrolled in course {enrollment.CourseId}.");
+
         _context.Enrollments.Add(enrollment);
         await _context.SaveChangesAsync();
         return enrollment;
@@ -34,10 +38,18 @@ public class EnrollmentRepository : IEnrollmentRepository
     {
         var existing = await _context.Enrollments.FindAsync(enrollment.EnrollmentId);
         if (existing == null) return null;
-        existing.StudentId  = enrollment.StudentId;
-        existing.CourseId   = enrollment.CourseId;
+
+        var duplicate = await _context.Enrollments.AnyAsync(e =>
+            e.EnrollmentId != enrollment.EnrollmentId &&
+            e.StudentId == enrollment.StudentId &&
+            e.CourseId == enrollment.CourseId);
+        if (duplicate)
+            throw new InvalidOperationException($"Student {enrollment.StudentId} is already enrolled in course {enrollment.CourseId}.");
+
+        existing.StudentId = enrollment.StudentId;
+        existing.CourseId = enrollment.CourseId;
         existing.EnrollDate = enrollment.EnrollDate;
-        existing.Status     = enrollment.Status;
+        existing.Status = enrollment.Status;
         await _context.SaveChangesAsync();
         return existing;
     }

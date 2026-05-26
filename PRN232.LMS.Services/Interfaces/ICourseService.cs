@@ -7,6 +7,7 @@ namespace PRN232.LMS.Services.Interfaces;
 public interface ICourseService
 {
     Task<CourseBM?> GetByIdAsync(int id);
+    Task<List<EnrollmentBM>> GetEnrollmentsByCourseIdAsync(int courseId);
     Task<PagedResult<object>> GetAllAsync(CourseQueryParams query);
     Task<CourseBM> CreateAsync(CourseBM bm);
     Task<CourseBM?> UpdateAsync(int id, CourseBM bm);

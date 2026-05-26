@@ -27,6 +27,12 @@ public class CourseService : ICourseService
         return entity == null ? null : _mapper.Map<CourseBM>(entity);
     }
 
+    public async Task<List<EnrollmentBM>> GetEnrollmentsByCourseIdAsync(int courseId)
+    {
+        var enrollments = await _repo.GetEnrollmentsByCourseIdAsync(courseId);
+        return _mapper.Map<List<EnrollmentBM>>(enrollments);
+    }
+
     public async Task<PagedResult<object>> GetAllAsync(CourseQueryParams query)
     {
         var source = await _repo.GetQueryableAsync();
